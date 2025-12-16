@@ -35,6 +35,7 @@ class MonitoringManager:
             args=[monitor.uuid],
             id=monitor.uuid,
             replace_existing=True,
+            next_run_time=datetime.utcnow(),
         )
 
     def add_monitor(self, uuid: str, interval_seconds: int) -> MonitorConfig:
