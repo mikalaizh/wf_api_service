@@ -37,3 +37,7 @@ A FastAPI-based web UI to configure credentials, monitor WorkFusion task UUIDs, 
 - Polling is performed per UUID using APScheduler; minimum interval is 10 seconds.
 - Variables for completion can be provided as `key=value&key2=value2` and are sent as a variables map in the completion payload.
 - The UI uses bearer token authentication (Authorization: Bearer <token>) for outbound calls.
+
+### TLS / SSL
+- Outbound requests validate the server certificate by default. If you encounter `[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate`, the WorkFusion endpoint is likely using a certificate issued by a custom corporate CA that is missing from your system trust store.
+- You can provide a path to a custom CA bundle or temporarily disable verification on the **Configuration** page. Disabling verification should only be used for testing.

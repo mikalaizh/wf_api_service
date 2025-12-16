@@ -14,6 +14,8 @@ MONITORS_PATH = Path("data/monitors.json")
 class AppConfig:
     base_url: str = ""
     api_key: str = ""
+    verify_ssl: bool = True
+    ca_bundle: str = ""
 
     @classmethod
     def load(cls, path: Path = CONFIG_PATH) -> "AppConfig":

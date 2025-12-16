@@ -62,9 +62,13 @@ async def update_config(
     request: Request,
     base_url: str = Form(...),
     api_key: str = Form(...),
+    verify_ssl: bool = Form(False),
+    ca_bundle: str = Form(""),
 ):
     config.base_url = base_url.rstrip("/")
     config.api_key = api_key.strip()
+    config.verify_ssl = verify_ssl
+    config.ca_bundle = ca_bundle.strip()
     config.save()
     return RedirectResponse(url="/config", status_code=303)
 

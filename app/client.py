@@ -13,7 +13,13 @@ logger = logging.getLogger(__name__)
 class WorkFusionClient:
     def __init__(self, config: AppConfig):
         self.config = config
-        self._client = httpx.AsyncClient(base_url=config.base_url.rstrip("/"))
+        verify: Optional[bool | str] = config.verify_ssl
+        if config.ca_bundle:
+            verify = config.ca_bundle
+        self.verify = verify
+        self._client = httpx.AsyncClient(
+            base_url=config.base_url.rstrip("/"), verify=self.verify
+        )
 
     def _headers(self) -> dict[str, str]:
         headers = {}
@@ -25,6 +31,7 @@ class WorkFusionClient:
         logger.info("Outgoing %s %s", method.upper(), path)
         if "json" in kwargs:
             logger.info("Payload: %s", kwargs.get("json"))
+        logger.info("SSL verify setting: %s", self.verify)
         response = await self._client.request(method, path, headers=self._headers(), **kwargs)
         logger.info("Response %s for %s %s", response.status_code, method.upper(), path)
         # Log a short preview of the body to help debug unexpected statuses
