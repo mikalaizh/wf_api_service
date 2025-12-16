@@ -33,6 +33,7 @@ class AppConfig:
 @dataclass
 class MonitorConfig:
     uuid: str
+    name: Optional[str] = None
     interval_seconds: int = 60
     last_status: Optional[str] = None
     last_checked: Optional[str] = None

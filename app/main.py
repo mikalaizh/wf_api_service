@@ -103,6 +103,24 @@ async def _perform_action(uuid: str, action):
     await monitoring_manager.check_now(uuid)
 
 
+@app.post("/process/{uuid}/start")
+async def start_process(uuid: str):
+    async def action(client: WorkFusionClient):
+        await client.start_task(uuid)
+
+    await _perform_action(uuid, action)
+    return RedirectResponse(url=f"/process/{uuid}", status_code=303)
+
+
+@app.post("/process/{uuid}/stop")
+async def stop_process(uuid: str, reason: str = Form("")):
+    async def action(client: WorkFusionClient):
+        await client.stop_task(uuid, reason)
+
+    await _perform_action(uuid, action)
+    return RedirectResponse(url=f"/process/{uuid}", status_code=303)
+
+
 @app.post("/process/{uuid}/abort")
 async def abort_process(uuid: str, reason: str = Form("")):
     async def action(client: WorkFusionClient):
