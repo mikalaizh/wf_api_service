@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, Optional
 
 import asyncio
+import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -20,6 +21,7 @@ class MonitoringManager:
         self.scheduler = AsyncIOScheduler()
         self.scheduler.configure(timezone="UTC")
         self.monitors: Dict[str, MonitorConfig] = {m.uuid: m for m in store.load()}
+        self.logger = logging.getLogger(__name__)
 
     def start(self):
         if not self.scheduler.running:
@@ -45,6 +47,7 @@ class MonitoringManager:
         self._persist()
         if asyncio.get_event_loop().is_running():
             asyncio.create_task(self.check_now(uuid))
+        self.logger.info("Added monitor for %s with interval %s", uuid, interval_seconds)
         return monitor
 
     def remove_monitor(self, uuid: str) -> None:
@@ -53,6 +56,7 @@ class MonitoringManager:
         if self.scheduler.get_job(uuid):
             self.scheduler.remove_job(uuid)
         self._persist()
+        self.logger.info("Removed monitor for %s", uuid)
 
     def update_interval(self, uuid: str, interval_seconds: int) -> Optional[MonitorConfig]:
         monitor = self.monitors.get(uuid)
@@ -61,6 +65,7 @@ class MonitoringManager:
         monitor.interval_seconds = interval_seconds
         self._schedule_monitor(monitor)
         self._persist()
+        self.logger.info("Updated monitor %s interval to %s", uuid, interval_seconds)
         return monitor
 
     def _persist(self):
@@ -80,7 +85,9 @@ class MonitoringManager:
                 or payload.get("name")
             )
             monitor.last_status = payload.get("status") or payload.get("state") or "unknown"
-        except Exception:
+            self.logger.info("Monitor %s status update: %s", uuid, monitor.last_status)
+        except Exception as exc:
+            self.logger.exception("Failed to update status for %s: %s", uuid, exc)
             monitor.last_status = "error"
         finally:
             monitor.last_checked = datetime.utcnow().isoformat()

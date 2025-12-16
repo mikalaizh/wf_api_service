@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Dict, Optional
 
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -9,6 +10,9 @@ from fastapi.templating import Jinja2Templates
 from .client import WorkFusionClient
 from .config import AppConfig, MonitorStore
 from .monitor import MonitoringManager
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="WorkFusion Monitor")
 templates = Jinja2Templates(directory="templates")
@@ -27,6 +31,14 @@ monitoring_manager = MonitoringManager(client_factory=get_client, store=monitor_
 @app.on_event("startup")
 async def startup_event():
     monitoring_manager.start()
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info("Incoming request %s %s", request.method, request.url.path)
+    response = await call_next(request)
+    logger.info("Response status %s for %s %s", response.status_code, request.method, request.url.path)
+    return response
 
 
 @app.get("/")
@@ -97,6 +109,7 @@ async def process_detail(request: Request, uuid: str):
 async def _perform_action(uuid: str, action):
     client = get_client()
     try:
+        logger.info("Performing action on %s", uuid)
         await action(client)
     finally:
         await client.close()
