@@ -43,19 +43,6 @@ class WorkFusionClient:
         )
         response.raise_for_status()
 
-    async def stop_task(self, task_id: str, reason: str = "") -> None:
-        payload = {"reason": reason}
-        response = await self._client.post(
-            f"/tasks/{task_id}/stop", json=payload, headers=self._headers()
-        )
-        response.raise_for_status()
-
-    async def start_task(self, task_id: str) -> None:
-        response = await self._client.post(
-            f"/tasks/{task_id}/start", headers=self._headers()
-        )
-        response.raise_for_status()
-
     async def reassign_task(self, task_id: str, assignee: str) -> None:
         payload = {"assignee": assignee}
         response = await self._client.put(

@@ -7,7 +7,6 @@
             <thead>
             <tr>
                 <th>UUID</th>
-                <th>Name</th>
                 <th>Interval (s)</th>
                 <th>Last Checked</th>
                 <th>Status</th>
@@ -18,7 +17,6 @@
             {% for monitor in monitors %}
                 <tr>
                     <td><a href="/process/{{ monitor.uuid }}">{{ monitor.uuid }}</a></td>
-                    <td>{{ monitor.name or '—' }}</td>
                     <td>
                         <form action="/monitor/{{ monitor.uuid }}/interval" method="post">
                             <div class="field has-addons">
@@ -45,7 +43,7 @@
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="6">No processes are being monitored yet.</td></tr>
+                <tr><td colspan="5">No processes are being monitored yet.</td></tr>
             {% endfor %}
             </tbody>
         </table>

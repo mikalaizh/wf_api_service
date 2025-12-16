@@ -4,8 +4,6 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Dict, Optional
 
-import asyncio
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
@@ -35,7 +33,6 @@ class MonitoringManager:
             args=[monitor.uuid],
             id=monitor.uuid,
             replace_existing=True,
-            next_run_time=datetime.utcnow(),
         )
 
     def add_monitor(self, uuid: str, interval_seconds: int) -> MonitorConfig:
@@ -43,8 +40,6 @@ class MonitoringManager:
         self.monitors[uuid] = monitor
         self._schedule_monitor(monitor)
         self._persist()
-        if asyncio.get_event_loop().is_running():
-            asyncio.create_task(self.check_now(uuid))
         return monitor
 
     def remove_monitor(self, uuid: str) -> None:
@@ -73,12 +68,6 @@ class MonitoringManager:
         client: WorkFusionClient = self.client_factory()
         try:
             payload = await client.get_task(uuid)
-            monitor.name = (
-                payload.get("businessProcessName")
-                or payload.get("processName")
-                or payload.get("businessProcess")
-                or payload.get("name")
-            )
             monitor.last_status = payload.get("status") or payload.get("state") or "unknown"
         except Exception:
             monitor.last_status = "error"
