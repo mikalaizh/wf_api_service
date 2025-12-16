@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="columns">
+    <div class="column is-two-thirds">
+        <h1 class="title">Monitored Processes</h1>
+        <table class="table is-fullwidth is-striped">
+            <thead>
+            <tr>
+                <th>UUID</th>
+                <th>Interval (s)</th>
+                <th>Last Checked</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for monitor in monitors %}
+                <tr>
+                    <td><a href="/process/{{ monitor.uuid }}">{{ monitor.uuid }}</a></td>
+                    <td>
+                        <form action="/monitor/{{ monitor.uuid }}/interval" method="post">
+                            <div class="field has-addons">
+                                <div class="control">
+                                    <input class="input" type="number" name="interval_seconds" value="{{ monitor.interval_seconds }}" min="10">
+                                </div>
+                                <div class="control">
+                                    <button class="button is-link" type="submit">Update</button>
+                                </div>
+                            </div>
+                        </form>
+                    </td>
+                    <td>{{ monitor.last_checked or '—' }}</td>
+                    <td>{{ monitor.last_status or 'pending' }}</td>
+                    <td>
+                        <div class="buttons are-small">
+                            <form action="/monitor/{{ monitor.uuid }}/refresh" method="post">
+                                <button class="button is-info" type="submit">Check Now</button>
+                            </form>
+                            <form action="/monitor/{{ monitor.uuid }}/remove" method="post">
+                                <button class="button is-danger" type="submit">Remove</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5">No processes are being monitored yet.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="column">
+        <h2 class="title is-4">Add Process</h2>
+        <form action="/monitor" method="post">
+            <div class="field">
+                <label class="label">Process UUID</label>
+                <div class="control">
+                    <input class="input" type="text" name="uuid" required>
+                </div>
+            </div>
+            <div class="field">
+                <label class="label">Check interval (seconds)</label>
+                <div class="control">
+                    <input class="input" type="number" name="interval_seconds" value="60" min="10">
+                </div>
+            </div>
+            <div class="field">
+                <button class="button is-primary" type="submit">Start Monitoring</button>
+            </div>
+        </form>
+        <article class="message is-info">
+            <div class="message-body">
+                Current WorkFusion API base URL: <strong>{{ config.base_url or 'not set' }}</strong>
+            </div>
+        </article>
+    </div>
+</div>
+{% endblock %}
