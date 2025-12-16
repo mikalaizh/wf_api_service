@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="title">Process {{ monitor.uuid }}</h1>
+<div class="columns">
+    <div class="column is-two-thirds">
+        <div class="box">
+            <p><strong>Last status:</strong> {{ monitor.last_status or 'unknown' }}</p>
+            <p><strong>Last checked:</strong> {{ monitor.last_checked or 'never' }}</p>
+            <p><strong>Interval:</strong> {{ monitor.interval_seconds }} seconds</p>
+            <div class="buttons">
+                <form action="/monitor/{{ monitor.uuid }}/refresh" method="post">
+                    <button class="button is-info" type="submit">Refresh now</button>
+                </form>
+                <form action="/monitor/{{ monitor.uuid }}/remove" method="post">
+                    <button class="button is-danger" type="submit">Stop monitoring</button>
+                </form>
+            </div>
+        </div>
+        <div class="box">
+            <h2 class="title is-5">Actions</h2>
+            <div class="columns">
+                <div class="column">
+                    <form action="/process/{{ monitor.uuid }}/abort" method="post">
+                        <div class="field">
+                            <label class="label">Abort reason</label>
+                            <div class="control">
+                                <input class="input" type="text" name="reason" placeholder="Optional reason">
+                            </div>
+                        </div>
+                        <button class="button is-warning" type="submit">Abort</button>
+                    </form>
+                </div>
+                <div class="column">
+                    <form action="/process/{{ monitor.uuid }}/reassign" method="post">
+                        <div class="field">
+                            <label class="label">Assignee</label>
+                            <div class="control">
+                                <input class="input" type="text" name="assignee" required>
+                            </div>
+                        </div>
+                        <button class="button is-link" type="submit">Reassign</button>
+                    </form>
+                </div>
+            </div>
+            <form action="/process/{{ monitor.uuid }}/complete" method="post">
+                <div class="field">
+                    <label class="label">Variables (key=value&key2=value2)</label>
+                    <div class="control">
+                        <input class="input" type="text" name="variables" placeholder="result=done&approved=true">
+                    </div>
+                </div>
+                <button class="button is-success" type="submit">Complete</button>
+            </form>
+            <div class="field" style="margin-top:1rem;">
+                <a class="button" href="/process/{{ monitor.uuid }}/variables">Load variables</a>
+            </div>
+        </div>
+    </div>
+    <div class="column">
+        <div class="box">
+            <h2 class="title is-5">Configuration</h2>
+            <p><strong>API base URL:</strong> {{ config.base_url or 'not set' }}</p>
+        </div>
+        {% if variables %}
+        <div class="box">
+            <h2 class="title is-5">Variables</h2>
+            <pre>{{ variables | tojson(indent=2) }}</pre>
+        </div>
+        {% elif variables_error %}
+        <div class="notification is-danger">{{ variables_error }}</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
