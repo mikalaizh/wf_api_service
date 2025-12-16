@@ -6,7 +6,7 @@ A FastAPI-based web UI to configure credentials, monitor WorkFusion task UUIDs, 
 - Configuration tab to set the WorkFusion API base URL and bearer token.
 - Dashboard to add UUIDs to monitor and adjust their polling interval.
 - Background scheduler to poll task status at the configured cadence per UUID.
-- Process detail page with common actions mapped to Task Management endpoints: refresh status, view variables, complete with variables, abort with a reason, and reassign to a different user.
+- Process detail page with common actions mapped to Task Management endpoints: refresh status, start/stop, view variables, complete with variables, abort with a reason, and reassign to a different user.
 
 ## Getting started
 
