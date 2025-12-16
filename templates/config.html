@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="title">API Configuration</h1>
+<form action="/config" method="post">
+    <div class="field">
+        <label class="label">WorkFusion API base URL</label>
+        <div class="control">
+            <input class="input" type="text" name="base_url" value="{{ config.base_url }}" placeholder="https://example.workfusion.com/api" required>
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">API Key / Bearer token</label>
+        <div class="control">
+            <input class="input" type="text" name="api_key" value="{{ config.api_key }}" placeholder="paste token here" required>
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">TLS / SSL verification</label>
+        <div class="control">
+            <label class="checkbox">
+                <input type="checkbox" name="verify_ssl" value="true" {% if config.verify_ssl %}checked{% endif %}>
+                Verify server certificate (disable only for testing)
+            </label>
+        </div>
+        <p class="help">If your company uses a custom root certificate, provide a CA bundle path below.</p>
+    </div>
+    <div class="field">
+        <label class="label">Custom CA bundle path (optional)</label>
+        <div class="control">
+            <input class="input" type="text" name="ca_bundle" value="{{ config.ca_bundle }}" placeholder="/path/to/cacert.pem">
+        </div>
+        <p class="help">Leave blank to rely on system certificates.</p>
+    </div>
+    <div class="field">
+        <button class="button is-primary" type="submit">Save</button>
+    </div>
+</form>
+{% endblock %}
