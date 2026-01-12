@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from pathlib import Path
 from typing import Optional
 
@@ -13,7 +13,8 @@ MONITORS_PATH = Path("data/monitors.json")
 @dataclass
 class AppConfig:
     base_url: str = ""
-    api_key: str = ""
+    username: str = ""
+    password: str = ""
     verify_ssl: bool = True
     ca_bundle: str = ""
 
@@ -23,7 +24,9 @@ class AppConfig:
             return cls()
         try:
             data = json.loads(path.read_text())
-            return cls(**data)
+            allowed_keys = {field.name for field in fields(cls)}
+            filtered = {key: value for key, value in data.items() if key in allowed_keys}
+            return cls(**filtered)
         except Exception:
             return cls()
 
