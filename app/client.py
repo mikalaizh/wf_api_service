@@ -77,7 +77,7 @@ class WorkFusionClient:
             ("scope", "BP_DETAILS"),
             ("scope", "CHILDREN_DETAILS"),
         ]
-        response = await self._request("POST", f"/v1/bp-instances/{bp_uuid}", params=params)
+        response = await self._request("GET", f"/v1/bp-instances/{bp_uuid}", params=params)
         return response.json()
 
     async def start_bp(self, bp_uuid: str) -> None:
