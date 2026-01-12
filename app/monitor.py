@@ -77,14 +77,21 @@ class MonitoringManager:
             return
         client: WorkFusionClient = self.client_factory()
         try:
-            payload = await client.get_task(uuid)
+            payload = await client.get_bp_instance(uuid)
+            bp_details = payload.get("bpDetails", {}) if isinstance(payload, dict) else {}
             monitor.name = (
-                payload.get("businessProcessName")
+                bp_details.get("name")
+                or payload.get("businessProcessName")
                 or payload.get("processName")
                 or payload.get("businessProcess")
                 or payload.get("name")
             )
-            monitor.last_status = payload.get("status") or payload.get("state") or "unknown"
+            monitor.last_status = (
+                bp_details.get("status")
+                or payload.get("status")
+                or payload.get("state")
+                or "unknown"
+            )
             self.logger.info("Monitor %s status update: %s", uuid, monitor.last_status)
         except Exception as exc:
             self.logger.exception("Failed to update status for %s: %s", uuid, exc)

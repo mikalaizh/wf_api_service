@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -61,12 +60,14 @@ async def get_config(request: Request):
 async def update_config(
     request: Request,
     base_url: str = Form(...),
-    api_key: str = Form(...),
+    username: str = Form(...),
+    password: str = Form(...),
     verify_ssl: bool = Form(False),
     ca_bundle: str = Form(""),
 ):
     config.base_url = base_url.rstrip("/")
-    config.api_key = api_key.strip()
+    config.username = username.strip()
+    config.password = password
     config.verify_ssl = verify_ssl
     config.ca_bundle = ca_bundle.strip()
     config.save()
@@ -123,7 +124,7 @@ async def _perform_action(uuid: str, action):
 @app.post("/process/{uuid}/start")
 async def start_process(uuid: str):
     async def action(client: WorkFusionClient):
-        await client.start_task(uuid)
+        await client.start_bp(uuid)
 
     await _perform_action(uuid, action)
     return RedirectResponse(url=f"/process/{uuid}", status_code=303)
@@ -132,68 +133,7 @@ async def start_process(uuid: str):
 @app.post("/process/{uuid}/stop")
 async def stop_process(uuid: str, reason: str = Form("")):
     async def action(client: WorkFusionClient):
-        await client.stop_task(uuid, reason)
+        await client.stop_bp(uuid, reason)
 
     await _perform_action(uuid, action)
     return RedirectResponse(url=f"/process/{uuid}", status_code=303)
-
-
-@app.post("/process/{uuid}/abort")
-async def abort_process(uuid: str, reason: str = Form("")):
-    async def action(client: WorkFusionClient):
-        await client.abort_task(uuid, reason)
-
-    await _perform_action(uuid, action)
-    return RedirectResponse(url=f"/process/{uuid}", status_code=303)
-
-
-@app.post("/process/{uuid}/complete")
-async def complete_process(uuid: str, variables: Optional[str] = Form("")):
-    parsed_vars: Dict[str, str] = {}
-    if variables:
-        try:
-            parsed_vars = {k: v for k, v in [pair.split("=") for pair in variables.split("&")]}
-        except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail="Variables must be in key=value&key2=value2 format",
-            )
-
-    async def action(client: WorkFusionClient):
-        await client.complete_task(uuid, parsed_vars)
-
-    await _perform_action(uuid, action)
-    return RedirectResponse(url=f"/process/{uuid}", status_code=303)
-
-
-@app.post("/process/{uuid}/reassign")
-async def reassign_process(uuid: str, assignee: str = Form(...)):
-    async def action(client: WorkFusionClient):
-        await client.reassign_task(uuid, assignee)
-
-    await _perform_action(uuid, action)
-    return RedirectResponse(url=f"/process/{uuid}", status_code=303)
-
-
-@app.get("/process/{uuid}/variables")
-async def process_variables(request: Request, uuid: str):
-    client = get_client()
-    variables = {}
-    error = None
-    try:
-        variables = await client.get_task_variables(uuid)
-    except Exception as exc:  # pragma: no cover - display only
-        error = str(exc)
-    finally:
-        await client.close()
-    monitor = monitoring_manager.monitors.get(uuid)
-    return templates.TemplateResponse(
-        "process.html",
-        {
-            "request": request,
-            "monitor": monitor,
-            "variables": variables,
-            "variables_error": error,
-            "config": config,
-        },
-    )
