@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 import asyncio
@@ -77,14 +77,48 @@ class MonitoringManager:
             return
         client: WorkFusionClient = self.client_factory()
         try:
-            payload = await client.get_task(uuid)
-            monitor.name = (
-                payload.get("businessProcessName")
-                or payload.get("processName")
-                or payload.get("businessProcess")
-                or payload.get("name")
+            payload = await client.get_definition_instances(uuid)
+            instances = payload.get("content", []) if isinstance(payload, dict) else []
+            self.logger.info(
+                "Definition %s instances: total=%s page=%s size=%s returned=%s",
+                uuid,
+                payload.get("totalElements") if isinstance(payload, dict) else "unknown",
+                payload.get("number") if isinstance(payload, dict) else "unknown",
+                payload.get("size") if isinstance(payload, dict) else "unknown",
+                len(instances),
             )
-            monitor.last_status = payload.get("status") or payload.get("state") or "unknown"
+            monitor.recent_instances = [self._summarize_instance(item) for item in instances]
+            latest = monitor.recent_instances[0] if monitor.recent_instances else None
+            monitor.name = (
+                (latest or {}).get("definition_title")
+                or (latest or {}).get("title")
+                or monitor.name
+            )
+            monitor.last_status = (latest or {}).get("status") or "no instances"
+            if not instances:
+                self.logger.info(
+                    "No instances returned for definition %s; attempting bp-instance lookup",
+                    uuid,
+                )
+                details = await client.get_bp_instance_details(uuid)
+                bp_details = details.get("bpDetails", {}) if isinstance(details, dict) else {}
+                if bp_details:
+                    monitor.name = bp_details.get("name") or monitor.name
+                    monitor.last_status = bp_details.get("status") or monitor.last_status
+                    monitor.recent_instances = [
+                        {
+                            "uuid": details.get("uuid") or uuid,
+                            "status": bp_details.get("status"),
+                            "start_date": None,
+                            "end_date": None,
+                            "author": bp_details.get("author"),
+                        }
+                    ]
+                    self.logger.info(
+                        "bp-instance lookup returned status=%s for %s",
+                        bp_details.get("status"),
+                        uuid,
+                    )
             self.logger.info("Monitor %s status update: %s", uuid, monitor.last_status)
         except Exception as exc:
             self.logger.exception("Failed to update status for %s: %s", uuid, exc)
@@ -100,3 +134,23 @@ class MonitoringManager:
 
     def serialize(self) -> Dict[str, Dict]:
         return {uuid: asdict(monitor) for uuid, monitor in self.monitors.items()}
+
+    def _summarize_instance(self, instance: Dict) -> Dict:
+        start_ms = instance.get("startDate")
+        end_ms = instance.get("endDate")
+        return {
+            "uuid": instance.get("uuid"),
+            "base_uuid": instance.get("baseUUID"),
+            "definition_uuid": instance.get("definitionUUID"),
+            "title": instance.get("title"),
+            "definition_title": instance.get("definitionTitle"),
+            "status": instance.get("businessProcessStatus") or instance.get("status"),
+            "author": instance.get("author"),
+            "start_date": self._format_timestamp(start_ms),
+            "end_date": self._format_timestamp(end_ms),
+        }
+
+    def _format_timestamp(self, timestamp_ms: Optional[int]) -> Optional[str]:
+        if timestamp_ms is None:
+            return None
+        return datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).isoformat()
