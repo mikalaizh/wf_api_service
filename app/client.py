@@ -60,10 +60,15 @@ class WorkFusionClient:
 
     def _headers(self) -> dict[str, str]:
         headers: dict[str, str] = {
+            "Accept": "application/json",
             "Content-Type": "application/x-www-form-urlencoded",
+            "X-Requested-With": "XMLHttpRequest",
         }
         if self._csrf_header_name and self._csrf_token:
             headers[self._csrf_header_name] = self._csrf_token
+        jsession_id = self._client.cookies.get("JSESSIONID")
+        if jsession_id:
+            headers["Cookie"] = f"JSESSIONID={jsession_id}"
         return headers
 
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
@@ -75,6 +80,12 @@ class WorkFusionClient:
             base_headers.pop("Content-Type", None)
         base_headers.update(extra_headers)
         logger.info("SSL verify setting: %s", self.verify)
+        logger.info(
+            "Request headers: %s",
+            [key for key in base_headers.keys() if key.lower() != "authorization"],
+        )
+        logger.info("Cookie names before request: %s", list(self._client.cookies.keys()))
+        logger.info("JSESSIONID present: %s", bool(self._client.cookies.get("JSESSIONID")))
         await self._ensure_session()
         response = await self._client.request(method, path, headers=base_headers, **kwargs)
         if response.status_code in {401, 403}:
@@ -87,6 +98,7 @@ class WorkFusionClient:
             response = await self._client.request(method, path, headers=base_headers, **kwargs)
         logger.info("Response %s for %s %s", response.status_code, method.upper(), path)
         logger.info("Response URL: %s", response.request.url)
+        logger.info("Response headers: %s", list(response.headers.keys()))
         # Log a short preview of the body to help debug unexpected statuses
         preview = response.text[:1000]
         if preview:
