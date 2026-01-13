@@ -115,6 +115,15 @@ class WorkFusionClient:
         )
         return response.json()
 
+    async def get_bp_instance_details(self, bp_uuid: str) -> Dict[str, Any]:
+        params = [
+            ("scope", "STRUCTURE"),
+            ("scope", "BP_DETAILS"),
+            ("scope", "CHILDREN_DETAILS"),
+        ]
+        response = await self._request("GET", f"/v1/bp-instances/{bp_uuid}", params=params)
+        return response.json()
+
     async def start_bp(self, bp_uuid: str) -> None:
         await self._request("POST", f"/v1/bp-instances/{bp_uuid}/start")
 

@@ -95,6 +95,30 @@ class MonitoringManager:
                 or monitor.name
             )
             monitor.last_status = (latest or {}).get("status") or "no instances"
+            if not instances:
+                self.logger.info(
+                    "No instances returned for definition %s; attempting bp-instance lookup",
+                    uuid,
+                )
+                details = await client.get_bp_instance_details(uuid)
+                bp_details = details.get("bpDetails", {}) if isinstance(details, dict) else {}
+                if bp_details:
+                    monitor.name = bp_details.get("name") or monitor.name
+                    monitor.last_status = bp_details.get("status") or monitor.last_status
+                    monitor.recent_instances = [
+                        {
+                            "uuid": details.get("uuid") or uuid,
+                            "status": bp_details.get("status"),
+                            "start_date": None,
+                            "end_date": None,
+                            "author": bp_details.get("author"),
+                        }
+                    ]
+                    self.logger.info(
+                        "bp-instance lookup returned status=%s for %s",
+                        bp_details.get("status"),
+                        uuid,
+                    )
             self.logger.info("Monitor %s status update: %s", uuid, monitor.last_status)
         except Exception as exc:
             self.logger.exception("Failed to update status for %s: %s", uuid, exc)
