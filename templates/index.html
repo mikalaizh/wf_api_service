@@ -2,12 +2,12 @@
 {% block content %}
 <div class="columns">
     <div class="column is-two-thirds">
-        <h1 class="title">Monitored Processes</h1>
+        <h1 class="title">Monitored Business Process Definitions</h1>
         <table class="table is-fullwidth is-striped">
             <thead>
             <tr>
-                <th>UUID</th>
-                <th>Title</th>
+                <th>Definition UUID</th>
+                <th>Definition Title</th>
                 <th>Interval (s)</th>
                 <th>Last Checked</th>
                 <th>Status</th>
@@ -57,10 +57,10 @@
         </table>
     </div>
     <div class="column">
-        <h2 class="title is-4">Add Process</h2>
+        <h2 class="title is-4">Add Business Process Definition</h2>
         <form action="/monitor" method="post">
             <div class="field">
-                <label class="label">Process UUID</label>
+                <label class="label">Definition UUID</label>
                 <div class="control">
                     <input class="input" type="text" name="uuid" required>
                 </div>
