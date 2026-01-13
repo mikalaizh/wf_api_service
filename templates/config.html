@@ -9,9 +9,15 @@
         </div>
     </div>
     <div class="field">
-        <label class="label">API Key / Bearer token</label>
+        <label class="label">Username</label>
         <div class="control">
-            <input class="input" type="text" name="api_key" value="{{ config.api_key }}" placeholder="paste token here" required>
+            <input class="input" type="text" name="username" value="{{ config.username }}" placeholder="Control Tower username" required>
+        </div>
+    </div>
+    <div class="field">
+        <label class="label">Password</label>
+        <div class="control">
+            <input class="input" type="password" name="password" value="{{ config.password }}" placeholder="Control Tower password" required>
         </div>
     </div>
     <div class="field">
