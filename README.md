@@ -1,12 +1,12 @@
 # WorkFusion Task Monitor
 
-A FastAPI-based web UI to configure credentials, monitor WorkFusion task UUIDs, and perform basic task actions (check status, abort, reassign, complete, and view variables) using the Task Management API.
+A FastAPI-based web UI to configure credentials, monitor WorkFusion Business Process UUIDs, and perform basic start/stop actions using the WorkFusion REST API.
 
 ## Features
-- Configuration tab to set the WorkFusion API base URL and bearer token.
-- Dashboard to add UUIDs to monitor and adjust their polling interval.
+- Configuration tab to set the WorkFusion API base URL and Control Tower credentials.
+- Dashboard to add Business Process definition UUIDs to monitor and adjust their polling interval.
 - Background scheduler to poll task status at the configured cadence per UUID.
-- Process detail page with common actions mapped to Task Management endpoints: refresh status, start/stop, view variables, complete with variables, abort with a reason, and reassign to a different user.
+- Process detail page with actions mapped to Business Process endpoints: refresh status and start/stop.
 
 ## Getting started
 
@@ -30,13 +30,12 @@ A FastAPI-based web UI to configure credentials, monitor WorkFusion task UUIDs, 
    ```bash
    uvicorn app.main:app --reload
    ```
-3. Open http://127.0.0.1:8000 in your browser. Use the **Configuration** tab to set your WorkFusion API base URL (e.g., `https://<host>/workfusion/api`) and API key. These values are saved to `data/config.json`.
-4. Add process UUIDs on the dashboard, set the polling interval, and use the process page to abort, reassign, complete, or load variables.
+3. Open http://127.0.0.1:8000 in your browser. Use the **Configuration** tab to set your WorkFusion API base URL (e.g., `https://<host>/workfusion/api`) and Control Tower credentials. These values are saved to `data/config.json`.
+4. Add Business Process definition UUIDs on the dashboard, set the polling interval, and use the process page to refresh status and view recent instances.
 
 ### Notes
 - Polling is performed per UUID using APScheduler; minimum interval is 10 seconds.
-- Variables for completion can be provided as `key=value&key2=value2` and are sent as a variables map in the completion payload.
-- The UI uses bearer token authentication (Authorization: Bearer <token>) for outbound calls.
+- The UI uses WorkFusion form-based authentication and includes the CSRF token returned by the login endpoint on each request.
 
 ### TLS / SSL
 - Outbound requests validate the server certificate by default. If you encounter `[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate`, the WorkFusion endpoint is likely using a certificate issued by a custom corporate CA that is missing from your system trust store.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import httpx
 import logging
 from typing import Any, Dict, Optional
@@ -20,20 +21,72 @@ class WorkFusionClient:
         self._client = httpx.AsyncClient(
             base_url=config.base_url.rstrip("/"), verify=self.verify
         )
+        self._csrf_token: Optional[str] = None
+        self._csrf_header_name: Optional[str] = None
+        self._login_lock = asyncio.Lock()
+
+    async def _login(self) -> None:
+        if not self.config.username or not self.config.password:
+            raise ValueError("WorkFusion username/password are required")
+        payload = {
+            "j_username": self.config.username,
+            "j_password": self.config.password,
+        }
+        logger.info("Authenticating with WorkFusion form login")
+        response = await self._client.post(
+            "/dologin",
+            params=payload,
+            data=payload,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        response.raise_for_status()
+        data = response.json()
+        self._csrf_token = data.get("csrfToken")
+        self._csrf_header_name = data.get("csrfHeaderName")
+        if not self._csrf_token or not self._csrf_header_name:
+            raise ValueError("Login response missing CSRF token details")
+        logger.info(
+            "Login successful. CSRF header: %s, token length: %s, cookies: %s",
+            self._csrf_header_name,
+            len(self._csrf_token),
+            list(self._client.cookies.keys()),
+        )
+
+    async def _ensure_session(self) -> None:
+        if not self._csrf_token or not self._csrf_header_name:
+            async with self._login_lock:
+                if not self._csrf_token or not self._csrf_header_name:
+                    await self._login()
 
     def _headers(self) -> dict[str, str]:
-        headers = {}
-        if self.config.api_key:
-            headers["Authorization"] = f"Bearer {self.config.api_key}"
+        headers: dict[str, str] = {
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        if self._csrf_header_name and self._csrf_token:
+            headers[self._csrf_header_name] = self._csrf_token
         return headers
 
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
         logger.info("Outgoing %s %s", method.upper(), path)
+        base_headers = self._headers()
+        extra_headers = dict(kwargs.pop("headers", {}) or {})
         if "json" in kwargs:
             logger.info("Payload: %s", kwargs.get("json"))
+            base_headers.pop("Content-Type", None)
+        base_headers.update(extra_headers)
         logger.info("SSL verify setting: %s", self.verify)
-        response = await self._client.request(method, path, headers=self._headers(), **kwargs)
+        await self._ensure_session()
+        response = await self._client.request(method, path, headers=base_headers, **kwargs)
+        if response.status_code in {401, 403}:
+            logger.info("Session expired, re-authenticating")
+            await self._login()
+            base_headers = self._headers()
+            if "json" in kwargs:
+                base_headers.pop("Content-Type", None)
+            base_headers.update(extra_headers)
+            response = await self._client.request(method, path, headers=base_headers, **kwargs)
         logger.info("Response %s for %s %s", response.status_code, method.upper(), path)
+        logger.info("Response URL: %s", response.request.url)
         # Log a short preview of the body to help debug unexpected statuses
         preview = response.text[:1000]
         if preview:
@@ -41,32 +94,43 @@ class WorkFusionClient:
         response.raise_for_status()
         return response
 
-    async def get_task(self, task_id: str) -> Dict[str, Any]:
-        response = await self._request("GET", f"/tasks/{task_id}")
+    async def get_definition_instances(
+        self,
+        definition_uuid: str,
+        page: int = 0,
+        size: int = 10,
+        sort: str = "START_DATE",
+        sort_direction: str = "ASC",
+    ) -> Dict[str, Any]:
+        params = {
+            "page": page,
+            "size": size,
+            "sort": sort,
+            "sortDirection": sort_direction,
+        }
+        response = await self._request(
+            "GET",
+            f"/v1/definitions/{definition_uuid}/instances",
+            params=params,
+        )
         return response.json()
 
-    async def get_task_variables(self, task_id: str) -> Dict[str, Any]:
-        response = await self._request("GET", f"/tasks/{task_id}/variables")
+    async def get_bp_instance_details(self, bp_uuid: str) -> Dict[str, Any]:
+        params = [
+            ("scope", "STRUCTURE"),
+            ("scope", "BP_DETAILS"),
+            ("scope", "CHILDREN_DETAILS"),
+        ]
+        response = await self._request("GET", f"/v1/bp-instances/{bp_uuid}", params=params)
         return response.json()
 
-    async def complete_task(self, task_id: str, variables: Optional[dict[str, Any]] = None) -> None:
-        payload: Dict[str, Any] = {"variables": variables or {}}
-        await self._request("POST", f"/tasks/{task_id}/complete", json=payload)
+    async def start_bp(self, bp_uuid: str) -> None:
+        await self._request("POST", f"/v1/bp-instances/{bp_uuid}/start")
 
-    async def abort_task(self, task_id: str, reason: str = "") -> None:
-        payload = {"reason": reason}
-        await self._request("POST", f"/tasks/{task_id}/abort", json=payload)
-
-    async def stop_task(self, task_id: str, reason: str = "") -> None:
-        payload = {"reason": reason}
-        await self._request("POST", f"/tasks/{task_id}/stop", json=payload)
-
-    async def start_task(self, task_id: str) -> None:
-        await self._request("POST", f"/tasks/{task_id}/start")
-
-    async def reassign_task(self, task_id: str, assignee: str) -> None:
-        payload = {"assignee": assignee}
-        await self._request("PUT", f"/tasks/{task_id}/assignee", json=payload)
+    async def stop_bp(self, bp_uuid: str, reason: str = "") -> None:
+        payload = {"reason": reason} if reason else None
+        kwargs = {"json": payload} if payload else {}
+        await self._request("POST", f"/v1/bp-instances/{bp_uuid}/stop", **kwargs)
 
     async def close(self) -> None:
         await self._client.aclose()
