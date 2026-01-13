@@ -32,6 +32,7 @@ class WorkFusionClient:
         }
         response = await self._client.post(
             "/dologin",
+            params=payload,
             data=payload,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
@@ -47,22 +48,32 @@ class WorkFusionClient:
             await self._login()
 
     def _headers(self) -> dict[str, str]:
-        headers: dict[str, str] = {}
+        headers: dict[str, str] = {
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
         if self._csrf_header_name and self._csrf_token:
             headers[self._csrf_header_name] = self._csrf_token
         return headers
 
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
         logger.info("Outgoing %s %s", method.upper(), path)
+        base_headers = self._headers()
+        extra_headers = dict(kwargs.pop("headers", {}) or {})
         if "json" in kwargs:
             logger.info("Payload: %s", kwargs.get("json"))
+            base_headers.pop("Content-Type", None)
+        base_headers.update(extra_headers)
         logger.info("SSL verify setting: %s", self.verify)
         await self._ensure_session()
-        response = await self._client.request(method, path, headers=self._headers(), **kwargs)
+        response = await self._client.request(method, path, headers=base_headers, **kwargs)
         if response.status_code in {401, 403}:
             logger.info("Session expired, re-authenticating")
             await self._login()
-            response = await self._client.request(method, path, headers=self._headers(), **kwargs)
+            base_headers = self._headers()
+            if "json" in kwargs:
+                base_headers.pop("Content-Type", None)
+            base_headers.update(extra_headers)
+            response = await self._client.request(method, path, headers=base_headers, **kwargs)
         logger.info("Response %s for %s %s", response.status_code, method.upper(), path)
         # Log a short preview of the body to help debug unexpected statuses
         preview = response.text[:1000]
