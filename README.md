@@ -4,7 +4,7 @@ A FastAPI-based web UI to configure credentials, monitor WorkFusion Business Pro
 
 ## Features
 - Configuration tab to set the WorkFusion API base URL and Control Tower credentials.
-- Dashboard to add UUIDs to monitor and adjust their polling interval.
+- Dashboard to add Business Process definition UUIDs to monitor and adjust their polling interval.
 - Background scheduler to poll task status at the configured cadence per UUID.
 - Process detail page with actions mapped to Business Process endpoints: refresh status and start/stop.
 
@@ -31,7 +31,7 @@ A FastAPI-based web UI to configure credentials, monitor WorkFusion Business Pro
    uvicorn app.main:app --reload
    ```
 3. Open http://127.0.0.1:8000 in your browser. Use the **Configuration** tab to set your WorkFusion API base URL (e.g., `https://<host>/workfusion/api`) and Control Tower credentials. These values are saved to `data/config.json`.
-4. Add process UUIDs on the dashboard, set the polling interval, and use the process page to start/stop or refresh status.
+4. Add Business Process definition UUIDs on the dashboard, set the polling interval, and use the process page to refresh status and view recent instances.
 
 ### Notes
 - Polling is performed per UUID using APScheduler; minimum interval is 10 seconds.

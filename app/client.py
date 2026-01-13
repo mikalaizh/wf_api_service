@@ -71,13 +71,25 @@ class WorkFusionClient:
         response.raise_for_status()
         return response
 
-    async def get_bp_instance(self, bp_uuid: str) -> Dict[str, Any]:
-        params = [
-            ("scope", "STRUCTURE"),
-            ("scope", "BP_DETAILS"),
-            ("scope", "CHILDREN_DETAILS"),
-        ]
-        response = await self._request("GET", f"/v1/bp-instances/{bp_uuid}", params=params)
+    async def get_definition_instances(
+        self,
+        definition_uuid: str,
+        page: int = 0,
+        size: int = 5,
+        sort: str = "START_DATE",
+        sort_direction: str = "DESC",
+    ) -> Dict[str, Any]:
+        params = {
+            "page": page,
+            "size": size,
+            "sort": sort,
+            "sortDirection": sort_direction,
+        }
+        response = await self._request(
+            "GET",
+            f"/v1/definitions/{definition_uuid}/instances",
+            params=params,
+        )
         return response.json()
 
     async def start_bp(self, bp_uuid: str) -> None:

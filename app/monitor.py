@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 import asyncio
@@ -77,21 +77,16 @@ class MonitoringManager:
             return
         client: WorkFusionClient = self.client_factory()
         try:
-            payload = await client.get_bp_instance(uuid)
-            bp_details = payload.get("bpDetails", {}) if isinstance(payload, dict) else {}
+            payload = await client.get_definition_instances(uuid)
+            instances = payload.get("content", []) if isinstance(payload, dict) else []
+            monitor.recent_instances = [self._summarize_instance(item) for item in instances]
+            latest = monitor.recent_instances[0] if monitor.recent_instances else None
             monitor.name = (
-                bp_details.get("name")
-                or payload.get("businessProcessName")
-                or payload.get("processName")
-                or payload.get("businessProcess")
-                or payload.get("name")
+                (latest or {}).get("definition_title")
+                or (latest or {}).get("title")
+                or monitor.name
             )
-            monitor.last_status = (
-                bp_details.get("status")
-                or payload.get("status")
-                or payload.get("state")
-                or "unknown"
-            )
+            monitor.last_status = (latest or {}).get("status") or "no instances"
             self.logger.info("Monitor %s status update: %s", uuid, monitor.last_status)
         except Exception as exc:
             self.logger.exception("Failed to update status for %s: %s", uuid, exc)
@@ -107,3 +102,23 @@ class MonitoringManager:
 
     def serialize(self) -> Dict[str, Dict]:
         return {uuid: asdict(monitor) for uuid, monitor in self.monitors.items()}
+
+    def _summarize_instance(self, instance: Dict) -> Dict:
+        start_ms = instance.get("startDate")
+        end_ms = instance.get("endDate")
+        return {
+            "uuid": instance.get("uuid"),
+            "base_uuid": instance.get("baseUUID"),
+            "definition_uuid": instance.get("definitionUUID"),
+            "title": instance.get("title"),
+            "definition_title": instance.get("definitionTitle"),
+            "status": instance.get("businessProcessStatus") or instance.get("status"),
+            "author": instance.get("author"),
+            "start_date": self._format_timestamp(start_ms),
+            "end_date": self._format_timestamp(end_ms),
+        }
+
+    def _format_timestamp(self, timestamp_ms: Optional[int]) -> Optional[str]:
+        if timestamp_ms is None:
+            return None
+        return datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc).isoformat()

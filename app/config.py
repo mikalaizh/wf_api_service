@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, asdict, fields
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 
 CONFIG_PATH = Path("data/config.json")
@@ -42,6 +42,7 @@ class MonitorConfig:
     interval_seconds: int = 60
     last_status: Optional[str] = None
     last_checked: Optional[str] = None
+    recent_instances: Optional[list[dict[str, Any]]] = None
 
 
 class MonitorStore:
