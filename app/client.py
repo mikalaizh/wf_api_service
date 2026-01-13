@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import httpx
 import logging
 from typing import Any, Dict, Optional
@@ -22,6 +23,7 @@ class WorkFusionClient:
         )
         self._csrf_token: Optional[str] = None
         self._csrf_header_name: Optional[str] = None
+        self._login_lock = asyncio.Lock()
 
     async def _login(self) -> None:
         if not self.config.username or not self.config.password:
@@ -30,6 +32,7 @@ class WorkFusionClient:
             "j_username": self.config.username,
             "j_password": self.config.password,
         }
+        logger.info("Authenticating with WorkFusion form login")
         response = await self._client.post(
             "/dologin",
             params=payload,
@@ -42,10 +45,18 @@ class WorkFusionClient:
         self._csrf_header_name = data.get("csrfHeaderName")
         if not self._csrf_token or not self._csrf_header_name:
             raise ValueError("Login response missing CSRF token details")
+        logger.info(
+            "Login successful. CSRF header: %s, token length: %s, cookies: %s",
+            self._csrf_header_name,
+            len(self._csrf_token),
+            list(self._client.cookies.keys()),
+        )
 
     async def _ensure_session(self) -> None:
         if not self._csrf_token or not self._csrf_header_name:
-            await self._login()
+            async with self._login_lock:
+                if not self._csrf_token or not self._csrf_header_name:
+                    await self._login()
 
     def _headers(self) -> dict[str, str]:
         headers: dict[str, str] = {
@@ -75,6 +86,7 @@ class WorkFusionClient:
             base_headers.update(extra_headers)
             response = await self._client.request(method, path, headers=base_headers, **kwargs)
         logger.info("Response %s for %s %s", response.status_code, method.upper(), path)
+        logger.info("Response URL: %s", response.request.url)
         # Log a short preview of the body to help debug unexpected statuses
         preview = response.text[:1000]
         if preview:
@@ -86,9 +98,9 @@ class WorkFusionClient:
         self,
         definition_uuid: str,
         page: int = 0,
-        size: int = 5,
+        size: int = 10,
         sort: str = "START_DATE",
-        sort_direction: str = "DESC",
+        sort_direction: str = "ASC",
     ) -> Dict[str, Any]:
         params = {
             "page": page,

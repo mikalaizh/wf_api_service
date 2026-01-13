@@ -79,6 +79,14 @@ class MonitoringManager:
         try:
             payload = await client.get_definition_instances(uuid)
             instances = payload.get("content", []) if isinstance(payload, dict) else []
+            self.logger.info(
+                "Definition %s instances: total=%s page=%s size=%s returned=%s",
+                uuid,
+                payload.get("totalElements") if isinstance(payload, dict) else "unknown",
+                payload.get("number") if isinstance(payload, dict) else "unknown",
+                payload.get("size") if isinstance(payload, dict) else "unknown",
+                len(instances),
+            )
             monitor.recent_instances = [self._summarize_instance(item) for item in instances]
             latest = monitor.recent_instances[0] if monitor.recent_instances else None
             monitor.name = (
